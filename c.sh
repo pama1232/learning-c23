@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# 1. Инициализация Git-репозитория
+PROJECT="${1:-project-1}"
+BUILD_TYPE="${2:-Debug}"
+
 if [ ! -d ".git" ]; then
   git init -b main
 fi
 
-# 2. Формирование .gitignore
 cat <<'EOF' >.gitignore
 build/
 bin/
@@ -30,11 +31,10 @@ compile_commands.json
 *~
 EOF
 
-# 3. Формирование оптимизированного CMakeLists.txt (Clang + LLD + ThinLTO + Zen4)
 cat <<'EOF' >CMakeLists.txt
 cmake_minimum_required(VERSION 3.25)
 
-project(sys_core
+project(systems_learning_c23
     VERSION 0.1.0
     LANGUAGES C
 )
@@ -44,71 +44,75 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_executable(sys_core src/main.c)
+# Централизованный интерфейс настроек тулчейна Clang/LLD под Zen4
+add_library(sys_compiler_flags INTERFACE)
 
-# Архитектурные флаги компилятора Clang под AMD Zen4
-target_compile_options(sys_core PRIVATE
-    -march=native
-    -O3
-    -pipe
-    -fno-plt
-    -fexceptions
-    -Wformat
-    -Werror=format-security
-    -fstack-clash-protection
-    -fcf-protection
-    -fno-omit-frame-pointer
-    -mno-omit-leaf-frame-pointer
-    -flto=thin
+target_compile_options(sys_compiler_flags INTERFACE
     -Wall
     -Wextra
     -Wpedantic
     -Wconversion
     -Wshadow
     -Wundef
+    -Wformat=2
+    -Werror=format-security
+    $<$<CONFIG:Debug>:-O0>
+    $<$<CONFIG:Debug>:-g3>
+    $<$<CONFIG:Debug>:-fno-omit-frame-pointer>
+    $<$<CONFIG:Debug>:-mno-omit-leaf-frame-pointer>
+    $<$<CONFIG:Debug>:-fsanitize=address,undefined>
+    $<$<CONFIG:Release>:-march=native>
+    $<$<CONFIG:Release>:-O3>
+    $<$<CONFIG:Release>:-pipe>
+    $<$<CONFIG:Release>:-fno-plt>
+    $<$<CONFIG:Release>:-fstack-clash-protection>
+    $<$<CONFIG:Release>:-fcf-protection>
+    $<$<CONFIG:Release>:-flto=thin>
 )
 
-# Защита памяти (активна строго в Release)
-target_compile_definitions(sys_core PRIVATE
+target_compile_definitions(sys_compiler_flags INTERFACE
     $<$<CONFIG:Release>:_FORTIFY_SOURCE=3>
 )
 
-# Параметры компоновщика LLVM LLD и межпроцедурная оптимизация
-target_link_options(sys_core PRIVATE
+target_link_options(sys_compiler_flags INTERFACE
     -fuse-ld=lld
-    -flto=thin
-    -Wl,-O1
-    -Wl,--sort-common
-    -Wl,--as-needed
-    -Wl,-z,relro
-    -Wl,-z,now
-    -Wl,-z,pack-relative-relocs
+    $<$<CONFIG:Debug>:-fsanitize=address,undefined>
+    $<$<CONFIG:Release>:-flto=thin>
+    $<$<CONFIG:Release>:-Wl,-O1>
+    $<$<CONFIG:Release>:-Wl,--as-needed>
+    $<$<CONFIG:Release>:-Wl,-z,relro>
+    $<$<CONFIG:Release>:-Wl,-z,now>
+    $<$<CONFIG:Release>:-Wl,-z,pack-relative-relocs>
 )
+
+# Регистрация целей (Монолитная схема)
+add_executable(project-1 src/project-1/main.c)
+target_link_libraries(project-1 PRIVATE sys_compiler_flags)
 EOF
 
-# 4. Формирование C23-исходника с корректной семантикой типов
-mkdir -p src
-cat <<'EOF' >src/main.c
+mkdir -p src/project-1
+cat <<'EOF' >src/project-1/main.c
+#include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 
-[[nodiscard]] static inline unsigned long long get_zen4_mask(void) {
+[[nodiscard]] static inline uint64_t get_zen4_mask(void) {
     return 0xFEEDC0FFEE00ULL;
 }
 
 int main(void) {
-    constexpr unsigned long long static_mask = 0xFEEDC0FFEE00ULL;
+    constexpr uint64_t static_mask = 0xFEEDC0FFEE00ULL;
     auto dynamic_mask = get_zen4_mask();
     void *ptr = nullptr;
 
     if (ptr == nullptr && dynamic_mask == static_mask) {
-        printf("[OK] Zen4 ThinLTO C23 Executable Online. Mask: 0x%llX\n", dynamic_mask);
+        printf("[OK] Project-1 Zen4 C23 Executable Online. Mask: 0x%016" PRIX64 "\n", dynamic_mask);
     }
 
     return 0;
 }
 EOF
 
-# 5. Сборка и запуск бинарника
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang
-cmake --build build
-./build/sys_core
+cmake -B build -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" -DCMAKE_C_COMPILER=clang
+cmake --build build --target "${PROJECT}"
+"./build/${PROJECT}"
