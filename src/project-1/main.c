@@ -1,19 +1,11 @@
-#include <inttypes.h>
-#include <stdint.h>
 #include <stdio.h>
-
-[[nodiscard]] static inline uint64_t get_zen4_mask(void) {
-    return 0xFEEDC0FFEE00ULL;
-}
+#include <stdint.h>
 
 int main(void) {
-    constexpr uint64_t static_mask = 0xFEEDC0FFEE00ULL;
-    auto dynamic_mask = get_zen4_mask();
-    void *ptr = nullptr;
-
-    if (ptr == nullptr && dynamic_mask == static_mask) {
-        printf("[OK] Project-1 Zen4 C23 Executable Online. Mask: 0x%016" PRIX64 "\n", dynamic_mask);
-    }
-
+    printf("uint8_t size: %zu bytes\n", sizeof(uint8_t));
+    printf("uint16_t size: %zu bytes\n", sizeof(uint16_t));
+    printf("uint32_t size: %zu bytes\n", sizeof(uint32_t));
+    printf("uint64_t size: %zu bytes\n", sizeof(uint64_t));
+    printf("void* size: %zu bytes\n", sizeof(void*));
     return 0;
 }
