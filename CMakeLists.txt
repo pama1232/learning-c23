@@ -51,6 +51,14 @@ target_link_options(sys_compiler_flags INTERFACE
     $<$<CONFIG:Release>:-Wl,-z,pack-relative-relocs>
 )
 
-# Регистрация целей (Монолитная схема)
-add_executable(project-1 src/project-1/main.c)
-target_link_libraries(project-1 PRIVATE sys_compiler_flags)
+# Универсальный макрос регистрации учебного проекта
+function(register_project TARGET_NAME)
+    add_executable(${TARGET_NAME} src/${TARGET_NAME}/main.c)
+    target_link_libraries(${TARGET_NAME} PRIVATE sys_compiler_flags)
+endfunction()
+
+# Декларация активных проектов (одна строка на проект):
+register_project(project-1)
+register_project(project-2)
+register_project(project-3)
+
