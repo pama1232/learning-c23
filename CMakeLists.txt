@@ -61,4 +61,4 @@ endfunction()
 register_project(project-1)
 register_project(project-2)
 register_project(project-3)
-
+register_project(project-4)
