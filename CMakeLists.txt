@@ -51,14 +51,16 @@ target_link_options(sys_compiler_flags INTERFACE
     $<$<CONFIG:Release>:-Wl,-z,pack-relative-relocs>
 )
 
-# Универсальный макрос регистрации учебного проекта
+# Универсальный макрос регистрации учебного проекта (поддерживает доп. библиотеки через ${ARGN})
 function(register_project TARGET_NAME)
-    add_executable(${TARGET_NAME} src/${TARGET_NAME}/main.c)
-    target_link_libraries(${TARGET_NAME} PRIVATE sys_compiler_flags)
+  add_executable(${TARGET_NAME} src/${TARGET_NAME}/main.c)
+  target_link_libraries(${TARGET_NAME} PRIVATE sys_compiler_flags ${ARGN})
 endfunction()
 
-# Декларация активных проектов (одна строка на проект):
+# Декларация активных проектов:
 register_project(project-1)
 register_project(project-2)
 register_project(project-3)
 register_project(project-4)
+register_project(project-5)
+register_project(sway-master-stack json-c)
